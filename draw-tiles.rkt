@@ -171,7 +171,16 @@
   (build-vector 6 (λ (n) (build-vector 6 (λ (m) (+ (* n 6) m))))))
 (define the-grid all-digits)
 (define (grid-arrange l)
-  (vector (list->vector l)))
+  (let* ([len (length l)]
+         [sq (floor (sqrt len))]
+         [rt (sqrt len)]
+         [qt (+ (inexact->exact sq) (if (equal? sq rt) 0 1))]
+         [qr (ceiling (/ len qt))])
+    (build-vector qr (λ (n) (build-vector qt (λ (m)
+                                               (let ([pos (+ (* n qt) m)])
+                                                 (if (< pos (length l))
+                                                     (list-ref l pos)
+                                                     0))))))))
 
 (define (draw-grid dc)
   (send dc set-smoothing 'smoothed)
