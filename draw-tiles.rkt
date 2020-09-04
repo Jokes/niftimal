@@ -116,7 +116,6 @@
   (draw-zero dc x y s)
   (let* ([ones (modulo d 6)]
          [sixes (- d ones)])
-    (displayln (string-append (number->string d) ": " (number->string sixes) " " (number->string ones)))
     (case ones
       [(1) (draw-one dc x y s)]
       [(2) (draw-two dc x y s)]
@@ -132,11 +131,11 @@
     ))
 
 (define (draw-number n dc x y s)
-  (draw-digit 0 dc x y s)
   (send dc set-pen "black" 1 'solid)
   (if (< n 36)
       (draw-digit n dc x y s)
       (let* ([hs (/ s 2)]
+             [ths (* 3/2 hs)]
              [dhs (* (sqrt 3) (/ hs 2))]
              [d1 (modulo n 36)]
              [d1a (- n d1)]
@@ -153,12 +152,12 @@
              [d7 (modulo (/ d6a 36 36 36 36 36 36) 36)]
              [nd (if (< 0 d7) 7 (if (< 0 d6) 6 (if (< 0 d5) 5 (if (< 0 d4) 4 (if (< 0 d3) 3 2)))))])
         (draw-digit d1 dc x y hs) ; central
-        (draw-digit d2 dc (- x (* 2 dhs)) y hs)                    ;  9:00
-        (when (> nd 2) (draw-digit d3 dc (- x dhs) (- y hs s) hs)) ; 11:00
-        (when (> nd 3) (draw-digit d4 dc (+ x dhs) (- y hs s) hs)) ;  1:00
-        (when (> nd 4) (draw-digit d5 dc (+ x (* 2 dhs)) y hs))    ;  3:00
-        (when (> nd 5) (draw-digit d6 dc (+ x dhs) (+ y hs s) hs)) ;  5:00
-        (when (> nd 6) (draw-digit d7 dc (- x dhs) (+ y hs s) hs)) ;  7:00
+        (draw-number-base d2 dc (- x (* 2 dhs)) y hs)                   ;  9:00
+        (when (> nd 2) (draw-number-base d3 dc (- x dhs) (- y ths) hs)) ; 11:00
+        (when (> nd 3) (draw-number-base d4 dc (+ x dhs) (- y ths) hs)) ;  1:00
+        (when (> nd 4) (draw-number-base d5 dc (+ x (* 2 dhs)) y hs))   ;  3:00
+        (when (> nd 5) (draw-number-base d6 dc (+ x dhs) (+ y ths) hs)) ;  5:00
+        (when (> nd 6) (draw-number-base d7 dc (- x dhs) (+ y ths) hs)) ;  7:00
         )))
 
 (define (draw-number-base n dc x y s)
@@ -181,15 +180,16 @@
   (let*-values ([(w h) (send dc get-size)]
                 [(cx) (/ w 2)]
                 [(cy) (/ h 2)]
-                [(row-length) (vector-length (vector-ref the-grid 1))]
+                [(magic) (* (sqrt 3) 3/4)]
+                [(row-length) (vector-length (vector-ref the-grid 0))]
                 [(column-length) (vector-length the-grid)]
-                [(row-length-real) (+ row-length 1)]
-                [(column-length-real) (* (+ (/ column-length 2) 1) (sqrt 3))]
+                [(row-length-real) (* (+ row-length 1) magic)]
+                [(column-length-real) (* (+ (/ column-length 2) 1/2) (sqrt 3) magic)]
                 [(row-scale) (/ w row-length-real)]
                 [(column-scale) (/ h column-length-real)]
                 [(true-scale) (min row-scale column-scale)]
-                [(start-x) (- cx (* (- row-length 1/2) true-scale 1/2))]
-                [(start-y) (- cy (* (- column-length 1) (sqrt 3) true-scale 1/4))])
+                [(start-x) (- cx (* (- row-length 3/2) magic true-scale 1/2))]
+                [(start-y) (- cy (* (- column-length 1) (* magic (sqrt 3)) true-scale 1/4))])
     (send dc draw-rectangle 0 0 w h)
     (for([i (in-range column-length)])
       (for ([j (in-range row-length)])
@@ -197,9 +197,9 @@
         (draw-number-base
          (vector-ref (vector-ref the-grid i) j) dc
          (if (odd? i)
-             (+ start-x (* true-scale (+ j 1/2)))
-             (+ start-x (* true-scale j)))
-         (+ start-y (* true-scale i (sqrt 3) 1/2)) (* true-scale 1/2))
+             (+ start-x (* magic true-scale j))
+             (+ start-x (* magic true-scale (- j 1/2))))
+         (+ start-y (* true-scale i (* magic (sqrt 3)) 1/2)) (* true-scale 1/2))
         ))
     ))
 
@@ -211,11 +211,11 @@
     (draw-grid bdc)
     (send bmp save-file
           (string-append
-           (string-join (map number->string (vector->list (vector-ref the-grid 1))))
+           (string-join (map number->string (apply append (vector->list (vector-map vector->list the-grid)))))
            ".png") 'png)))
 
 ; windowing things
-(define frame (new frame% [label "Tiles"] [height 600] [width 800]))
+(define frame (new frame% [label "Tiles"] [height 700] [width 800]))
 (define canvas-p (new vertical-panel% [parent frame] [alignment '(center center)]))
 (define menu-p (new horizontal-panel% [parent canvas-p] [alignment '(center center)]
                     [stretchable-height #f]))
